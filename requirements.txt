@@ -2,5 +2,5 @@ streamlit
 pandas
 plotly
 imap-tools
-datetime
-timedelta
+scikit-learn
+scipy
