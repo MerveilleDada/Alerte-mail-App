@@ -1,0 +1,6 @@
+streamlit
+pandas
+plotly
+imap-tools
+datetime
+timedelta
