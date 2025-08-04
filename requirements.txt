@@ -4,3 +4,4 @@ plotly
 imap-tools
 scikit-learn
 scipy
+openpyxl
