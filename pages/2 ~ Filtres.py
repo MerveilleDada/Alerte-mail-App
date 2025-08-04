@@ -1,13 +1,11 @@
 import streamlit as st
 st.set_page_config(page_title="Module streamlit", layout="centered")
 import pandas as pd
-import email
 from imap_tools import MailBox, AND
 import re
 import os
 import imaplib
 import unicodedata
-from email.header import decode_header
 from datetime import datetime, timedelta
 
 st.markdown("""

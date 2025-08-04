@@ -1,24 +1,10 @@
 import streamlit as st
 st.set_page_config(page_title="Module streamlit", layout="centered")
-import os.path
-import os
 import logging
 import socket
-import json
-import base64
-import re
-import pandas as pd
-import numpy as np 
-from datetime import datetime, timedelta
-import openpyxl
-import xlrd
-import plotly.express as px 
-import plotly.graph_objects as go 
 import imaplib
-from imap_tools import MailBox, AND
+from imap_tools import MailBox
 import imap_tools
-import email
-from email.header import decode_header
 #Importations indispensables
 
 st.set_page_config(page_title="Module streamlit", layout="centered")

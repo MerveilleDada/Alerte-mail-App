@@ -1,10 +1,9 @@
 import streamlit as st
 st.set_page_config(page_title="Module streamlit", layout="wide")
 import pandas as pd
-import numpy as np
 import plotly.graph_objects as go
 import plotly.express as px
-import altair as alt
+
 
 st.markdown("""
             <style>

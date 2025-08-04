@@ -1,8 +1,7 @@
 import streamlit as st
 st.set_page_config(page_title="Module streamlit", layout="centered")
 import logging
-import pandas as pd
-import numpy as np
+
 
 
 if "connect_ionos" not in st.session_state:
