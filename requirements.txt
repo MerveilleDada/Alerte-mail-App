@@ -5,4 +5,3 @@ imap-tools
 scikit-learn
 scipy
 openpyxl
-io
