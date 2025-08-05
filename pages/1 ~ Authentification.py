@@ -58,13 +58,13 @@ if st.session_state.compteur_ionos == 1:
             st.session_state.connect_ionos = 1
             st.success("Connexion réussie")
         except imaplib.IMAP4.error as e:
-            st.error("Échec de connexion :")
+            st.error("Échec de connexion")
             st.code(e)
         except socket.gaierror as f:
-            st.error("Hors ligne :")
+            st.error("Hors ligne")
             st.code(f)
         except imap_tools.errors.MailboxLoginError as i:
-            st.error("Échec de connexion :")
+            st.error("Échec de connexion")
             st.code(i)
 
 if st.session_state.connect_ionos==1:
@@ -74,7 +74,7 @@ if st.session_state.connect_ionos==1:
             st.session_state.connect_ionos = 0
             st.success("🔁 Déconnecté avec succès. Rechargez pour réinitialiser l'app.")
         except socket.gaierror as f:
-            st.error("Hors ligne :")
+            st.error("Hors ligne")
             st.code(f)
         except imaplib.IMAP4.abort as l:
             st.error("Délai de connexion dépassé")

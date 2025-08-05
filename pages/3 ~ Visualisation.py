@@ -1,6 +1,8 @@
 import streamlit as st
 st.set_page_config(page_title="Module streamlit", layout="centered")
-
+import io
+import pandas as pd
+import socket
 
 st.markdown("""
     <style>
@@ -50,19 +52,37 @@ try:
             styled_df = df.style.applymap(style_statut, subset=['Label'])
             st.dataframe(styled_df)
 
-            if st.button("Sauvergarde Excel",type="primary"):
-                df.to_excel("base_mail.xlsx", index=False)
+            
+
+            def to_excel(df):
+                output = io.BytesIO()
+                with pd.ExcelWriter(output, engine='openpyxl') as writer:
+                    df.to_excel(writer, index=False)
+                return output.getvalue()
+            
+            excel_data = to_excel(df)
+            if st.download_button(
+                label="Télécharger Excel",
+                data=excel_data,
+                file_name="base_mail.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"):
                 st.info("Données sauvegardées dans 'base_mail.xlsx'")
 
-            if st.button("Sauvergarde CSV",type="primary"):
-                df.to_csv("base_mail.csv", index=False)
+           
+            csv_data = df.to_csv(index=False).encode('utf-8')
+            if st.download_button(
+                label="Télécharger CSV",
+                data=csv_data,
+                file_name="base_mail.csv",
+                mime="text/csv"):
                 st.info("Données sauvegardées dans 'base_mail.csv'")
         except AttributeError as a:
             st.error("Base de données non existante")
             st.code(a)
 except AttributeError as l:
-     st.error("Connexion expirée.")
-     st.code(l)
-
+    st.error("Connexion expirée.")
+    st.code(l)
+except socket.gaierror as f:
+    st.error("Hors ligne")
 # with st.spinner("Wait for it...", show_time=True):
 #     time.sleep(60)

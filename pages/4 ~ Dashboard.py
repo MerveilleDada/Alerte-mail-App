@@ -1,12 +1,13 @@
 import streamlit as st
-st.set_page_config(page_title="Module streamlit", layout="wide")
+st.set_page_config(page_title="Module streamlit", layout="wide",initial_sidebar_state="collapsed")
 import pandas as pd
 import plotly.graph_objects as go
 import plotly.express as px
+import socket
 
 
 st.markdown("""
-            <style>
+            <style>ç
             [data-testid="stSidebar"] {
             background: linear-gradient(-45deg, #3b5998, #192f6a, #4c669f, #1c1c2e);
             background-blend-mode: overlay;
@@ -76,269 +77,292 @@ try:
         #     Configurez votre adresse e-mail
         # </h1>
         # """, unsafe_allow_html=True)
-
+        
         st.session_state.base.sort_values(by="Date", ascending=False, inplace=True)
-        c1,c2,c3 = st.columns([1,1,1])
-
-        with c1:
-            fig = go.Figure(
-                data=go.Pie(
-                    labels=st.session_state.base["Label"].value_counts().index,
-                    values=st.session_state.base["Label"].value_counts().values,hole=0.7,marker=dict(colors=px.colors.sequential.Blues)))
-            
-            fig.update_layout(
-                plot_bgcolor='rgba(0,0,0,0)',
-                paper_bgcolor='rgba(0,0,0,0)',
-                font=dict(family="Segoe UI", size=14, color="white"),
-                legend=dict(
-                font=dict(color="#FFFFFF")
-            ))
-
-            st.plotly_chart(fig, use_container_width=True)
-                
-
-        with c2:
-            heure_counts = st.session_state.base[st.session_state.base["Label"]=="Alerte"].Heure_journee.value_counts().sort_index()
-            df_heure = heure_counts.reset_index()
-            df_heure.columns = ['Heure', 'Nb']
-
-            fig2=px.bar(df_heure,x='Heure',y='Nb',color_discrete_sequence=["#CCE4FF"])
-            fig2.update_yaxes(title_text="Nombre d'occurrences")
-            fig2.update_xaxes(title_text='Heure')
-            fig2.update_layout(
-                plot_bgcolor='rgba(0,0,0,0)',
-                paper_bgcolor='rgba(0,0,0,0)',
-                font=dict(family="Segoe UI", size=14, color="white"),
-                bargap=0.1,
-                xaxis=dict(title_font=dict(color="white"), tickfont=dict(color="white")),
-                yaxis=dict(title_font=dict(color="white"), tickfont=dict(color="white")),
-                legend=dict(
-                font=dict(color="#FFFFFF")
-            ))
-            st.plotly_chart(fig2,use_container_width=True)
-        with c3:
-            # fig3=px.histogram(y=st.session_state.base.Jour_semaine.value_counts().sort_values(ascending=True).index.tolist(),x=st.session_state.base.Jour_semaine.value_counts().sort_values(ascending=True).values.tolist(),color_discrete_sequence=["#61B0FF"],orientation='h')
-            # fig3.update_xaxes(title_text="Nombre d'occurrences")
-            # fig3.update_yaxes(title_text='Jour')
-            # fig3.update_layout(bargap=0.1)
-            # st.plotly_chart(fig3,use_container_width=True)
-
-            jour_counts = st.session_state.base[st.session_state.base["Label"]=="Alerte"].Jour_semaine.value_counts().sort_values(ascending=True)
-
-            # Créer un DataFrame temporaire
-            df_jour = jour_counts.reset_index()
-            df_jour.columns = ['Jour', 'Nb']
-
-            # Tracer avec Plotly Express
-            fig3 = px.bar(
-                df_jour,
-                x='Nb',
-                y='Jour',
-                orientation='h',
-                color_discrete_sequence=px.colors.sequential.Blues # palette plus sobre et dégradée
-        )
-
-            fig3.update_layout(
-                plot_bgcolor='rgba(0,0,0,0)',
-                paper_bgcolor='rgba(0,0,0,0)',
-                font=dict(family="Segoe UI", size=14, color="white"),
-                bargap=0.15,
-                xaxis=dict(title='Nombre d’occurrences',title_font=dict(color="white"), tickfont=dict(color="white")),
-                yaxis=dict(title='Jour',title_font=dict(color="white"), tickfont=dict(color="white")),
-            )
-
-            fig3.update_traces(
-                marker=dict(opacity=0.85, line=dict(width=1, color='rgba(255,255,255,0.2)')),
-                hoverlabel=dict(bgcolor="black", font_size=13, font_family="Segoe UI")
-            )
-            
-            st.plotly_chart(fig3, use_container_width=True)
-
         df_alertes = st.session_state.base[st.session_state.base["Label"] == "Alerte"]
-        df_grouped = df_alertes.groupby(["Jour_semaine", "Heure_journee"]).size().reset_index(name="Nb_alertes")
+        if len(df_alertes)==0:
+            st.info("Aucune alerte détectée.")
+        elif len(df_alertes)==1:
+            st.info("Une seule alerte détectée. Voire 'Visualisation'.")
+        else:
+            st.header("Dashboard Alerte")
+            c1,c2,c3 = st.columns([1,1,1])
 
-
-        ordre_jours = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"]
-        df_grouped["Jour_semaine"] = pd.Categorical(df_grouped["Jour_semaine"], categories=ordre_jours, ordered=True)
-        fig4 = px.area(
-        df_grouped,
-        x='Heure_journee',
-        y='Nb_alertes',
-        color='Jour_semaine',
-        line_group='Jour_semaine',
-        markers=True,
-        color_discrete_sequence=px.colors.sequential.Reds
-        )
-
-        fig4.update_layout(
-            plot_bgcolor='rgba(0,0,0,0)',
-            paper_bgcolor='rgba(0,0,0,0)',
-            font=dict(family="Segoe UI", size=14,color="#FFFFFF"),
-            xaxis=dict(title_font=dict(color="white"), tickfont=dict(color="white")),
-            yaxis=dict(title_font=dict(color="white"), tickfont=dict(color="white")),
-            legend=dict(font=dict(color="#FFFFFF")),
-            showlegend=True
-        )
-
-        fig4.update_traces(
-            mode='lines+markers',
-            line_shape='spline',
-            fill='tozeroy',
-            marker=dict(size=6)
-        )
-        st.plotly_chart(fig4,use_container_width=True)
-
-        cO1,cO2 = st.columns([1,1])
-        with st.container():
-            with cO1:
-                fig5 = go.Figure(
-                data=go.Pie(
-                    labels=st.session_state.base[st.session_state.base["Label"]=="Alerte"]["Client"].value_counts().index,
-                    values=st.session_state.base[st.session_state.base["Label"]=="Alerte"]["Client"].value_counts().values,hole=0.7,marker=dict(colors=px.colors.sequential.Blues)))
+            with c1:
+                fig = go.Figure(
+                    data=go.Pie(
+                        labels=st.session_state.base["Label"].value_counts().index,
+                        values=st.session_state.base["Label"].value_counts().values,hole=0.7,marker=dict(colors=px.colors.sequential.Reds_r)))
             
-                fig5.update_layout(
+                fig.update_layout(
+                    title = "Répartition des mails extraits",
+                    plot_bgcolor="rgba(0,0,0,0)",  # fond transparent
+                    paper_bgcolor="rgba(0,0,0,0)",
+                    font=dict(family="Segoe UI", size=14, color="#FFFFFF"),
+                    legend=dict(font=dict(color="#FFFFFF")),
+                    
+                    # shapes=[
+                    #     dict(
+                    #         type="rect",
+                    #         xref="paper", yref="paper",
+                    #         x0=0, y0=0, x1=1.15, y1=1.15,
+                    #         line=dict(color="white", width=0.5),
+                    #         layer="below"
+                    #     )
+                    # ]
+                )
+
+                st.plotly_chart(fig, use_container_width=True)
+                    
+
+            with c2:
+                heure_counts = df_alertes.Heure_journee.value_counts().sort_index()
+                df_heure = heure_counts.reset_index()
+                df_heure.columns = ['Heure', 'Nb']
+
+                tickvals = list(range(df_heure["Heure"].min(), df_heure["Heure"].max() + 1))
+                ticktext = [f"{x} h" for x in tickvals]
+
+                fig2=px.bar(df_heure,x='Heure',y='Nb',color_discrete_sequence=["#CCE4FF"])
+                fig2.update_yaxes(title_text="Nombre d'alertes")
+                fig2.update_xaxes(title_text='Heure')
+                fig2.update_layout(
                     plot_bgcolor='rgba(0,0,0,0)',
                     paper_bgcolor='rgba(0,0,0,0)',
                     font=dict(family="Segoe UI", size=14, color="white"),
+                    bargap=0.1,
+                    xaxis=dict(title_font=dict(color="white"), tickfont=dict(color="white"),showgrid=True,gridcolor="rgba(255, 255, 255, 0)",tickformat=".0f",dtick=1,tickmode="array",tickvals=tickvals,ticktext=ticktext),
+                    yaxis=dict(title_font=dict(color="white"), tickfont=dict(color="white"),showgrid=True,gridcolor="rgba(255, 255, 255, 0.2)",tickformat=".0f",tickmode="linear",dtick=1),
                     legend=dict(
                     font=dict(color="#FFFFFF")
                 ))
-                st.plotly_chart(fig5, use_container_width=True)
-            with cO2:
-                fig6 = go.Figure(
-                data=go.Pie(
-                    labels=st.session_state.base[st.session_state.base["Label"]=="Alerte"]["Activité"].value_counts().index,
-                    values=st.session_state.base[st.session_state.base["Label"]=="Alerte"]["Activité"].value_counts().values,hole=0.7,marker=dict(colors=px.colors.sequential.Reds)))
-            
-                fig6.update_layout(
+                st.plotly_chart(fig2,use_container_width=True)
+            with c3:
+                jour_counts = df_alertes.Jour_semaine.value_counts().sort_values(ascending=True)
+
+                df_jour = jour_counts.reset_index()
+                df_jour.columns = ['Jour', 'Nb']
+
+                fig3 = px.bar(
+                    df_jour,
+                    x='Nb',
+                    y='Jour',
+                    orientation='h',
+                    color_discrete_sequence=px.colors.sequential.Reds_r,
+                    opacity = 0.3
+            )
+
+                fig3.update_layout(
                     plot_bgcolor='rgba(0,0,0,0)',
                     paper_bgcolor='rgba(0,0,0,0)',
                     font=dict(family="Segoe UI", size=14, color="white"),
-                    legend=dict(
-                    font=dict(color="#FFFFFF")
-                ))
-                st.plotly_chart(fig6, use_container_width=True)
+                    bargap=0.15,
+                    xaxis=dict(title="Nombre d'alertes",title_font=dict(color="white"), tickfont=dict(color="white"),showgrid=True,gridcolor="rgba(255, 255, 255, 0)",tickformat=".0f",tickmode="linear",dtick=1),
+                    yaxis=dict(title='Jour',title_font=dict(color="white"), tickfont=dict(color="white"),showgrid=True,gridcolor="rgba(255, 255, 255, 0.2)"),
+                )
 
-        cl1,cl2 = st.columns([4,1]) 
-        with cl2:     
-            clients = st.multiselect("Clients",list(st.session_state.base.Client.unique()),list(st.session_state.base.Client.unique()))
-            activites = st.multiselect("Secteurs d'activité",list(st.session_state.base.Activité.unique()),list(st.session_state.base.Activité.unique()))
-        with cl1:
-            df2=st.session_state.base[["Client","Activité","Label"]]
-            df_filtered = df2[df2["Label"]=="Alerte"][
-            (df2[df2["Label"]=="Alerte"]["Client"].isin(clients)) |
-            (df2[df2["Label"]=="Alerte"]["Activité"].isin(activites))
-        ]
-            df_groupe = df_filtered.groupby(["Activité", "Client"]).size().reset_index(name="Nb_alertes")
-            fig7 = go.Figure()
-            for activite in df_groupe["Activité"].unique():
-                df_activite = df_groupe[df_groupe["Activité"] == activite]
+                fig3.update_traces(
+                    marker=dict(opacity=0.85, line=dict(width=1, color='rgba(255,255,255,0.2)')),
+                    hoverlabel=dict(bgcolor="black", font_size=13, font_family="Segoe UI")
+                )
                 
-                fig7.add_trace(go.Bar(
-                    x=df_activite["Client"],
-                    y=df_activite["Nb_alertes"],
-                    name=activite,
-                    marker_color="#13E8F7",
-                    width=0.005
-                ))
+                st.plotly_chart(fig3, use_container_width=True)
+
             
-            # Mise en forme
-            fig7.update_layout(
-                barmode='group',
-                xaxis_title="Client",
-                yaxis_title="Nb_alertes",
+            df_grouped = df_alertes.groupby(["Jour_semaine", "Heure_journee"]).size().reset_index(name="Nombre d'alertes")
+
+
+            ordre_jours = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"]
+            df_grouped["Jour_semaine"] = pd.Categorical(df_grouped["Jour_semaine"], categories=ordre_jours, ordered=True)
+
+            tickvals = list(range(df_grouped["Heure_journee"].min(), df_grouped["Heure_journee"].max() + 1))
+            ticktext = [f"{x} h" for x in tickvals]
+
+            fig4 = px.area(
+            df_grouped,
+            x='Heure_journee',
+            y="Nombre d'alertes",
+            color='Jour_semaine',
+            line_group='Jour_semaine',
+            markers=True,
+            color_discrete_sequence=px.colors.sequential.Reds
+            )
+
+            fig4.update_layout(
+                title = "Alertes par heure et par jour",
                 plot_bgcolor='rgba(0,0,0,0)',
                 paper_bgcolor='rgba(0,0,0,0)',
-                xaxis=dict(title_font=dict(color="white"), tickfont=dict(color="white")),
-                yaxis=dict(title_font=dict(color="white"), tickfont=dict(color="white")),
+                font=dict(family="Segoe UI", size=14,color="#FFFFFF"),
+                xaxis=dict(title="Heure",title_font=dict(color="white"), tickfont=dict(color="white"),showgrid=True,gridcolor="rgba(255, 255, 255, 0)",tickformat=".0f",tickmode="array",tickvals=tickvals,ticktext=ticktext,dtick=1),
+                yaxis=dict(title_font=dict(color="white"), tickfont=dict(color="white"),showgrid=True,gridcolor="rgba(255, 255, 255, 0.2)",tickformat=".0f",tickmode="linear",dtick=1),
+                legend=dict(font=dict(color="#FFFFFF")),
+                showlegend=True
+            )
+
+            fig4.update_traces(
+                mode='lines+markers',
+                line_shape='spline',
+                fill='tozeroy',
+                marker=dict(size=6)
+            )
+            st.plotly_chart(fig4,use_container_width=True)
+
+            cO1,cO2 = st.columns([1,1])
+            with st.container():
+                with cO1:
+                    fig5 = go.Figure(
+                    data=go.Pie(
+                        labels=df_alertes["Client"].value_counts().index,
+                        values=df_alertes["Client"].value_counts().values,hole=0.7,marker=dict(colors=px.colors.sequential.Blues)))
+                
+                    fig5.update_layout(
+                        title="Alertes par client",
+                        plot_bgcolor='rgba(0,0,0,0)',
+                        paper_bgcolor='rgba(0,0,0,0)',
+                        font=dict(family="Segoe UI", size=14, color="white"),
+                        legend=dict(
+                        font=dict(color="#FFFFFF")
+                    ))
+                    st.plotly_chart(fig5, use_container_width=True)
+                with cO2:
+                    fig6 = go.Figure(
+                    data=go.Pie(
+                        labels=df_alertes["Activité"].value_counts().index,
+                        values=df_alertes["Activité"].value_counts().values,hole=0.7,marker=dict(colors=px.colors.sequential.Reds)))
+                
+                    fig6.update_layout(
+                        title="Alertes par secteur d'activité",
+                        plot_bgcolor='rgba(0,0,0,0)',
+                        paper_bgcolor='rgba(0,0,0,0)',
+                        font=dict(family="Segoe UI", size=14, color="white"),
+                        legend=dict(
+                        font=dict(color="#FFFFFF")
+                    ))
+                    st.plotly_chart(fig6, use_container_width=True)
+
+            cl1,cl2 = st.columns([4,1]) 
+            with cl2:     
+                st.write(" ")
+                st.write(" ")
+                st.write(" ")
+                st.write(" ")
+                st.write(" ")
+                st.write(" ")
+                clients = st.multiselect("Clients",list(df_alertes.Client.unique()),list(df_alertes.Client.unique()))
+                activites = st.multiselect("Secteurs d'activité",list(df_alertes.Activité.unique()),list(df_alertes.Activité.unique()))
+            with cl1:
+                df2=df_alertes[["Client","Activité","Label"]]
+                df_filtered = df2[(df2["Client"].isin(clients))|(df2["Activité"].isin(activites))]
+
+                df_groupe = df_filtered.groupby(["Activité", "Client"]).size().reset_index(name="Nombre d'alertes")
+                fig7 = go.Figure()
+                for activite in df_groupe["Activité"].unique():
+                    df_activite = df_groupe[df_groupe["Activité"] == activite]
+                    
+                    fig7.add_trace(go.Bar(
+                        x=df_activite["Client"],
+                        y=df_activite["Nombre d'alertes"],
+                        name=activite,
+                        marker_color="#13E8F7",
+                        width=0.005
+                    ))
+                
+                # Mise en forme
+                fig7.update_layout(
+                    title = "Alertes par client suivant le secteur d'activité",
+                    barmode='group',
+                    xaxis_title="Client",
+                    yaxis_title="Nombre d'alertes",
+                    plot_bgcolor='rgba(0,0,0,0)',
+                    paper_bgcolor='rgba(0,0,0,0)',
+                    xaxis=dict(title_font=dict(color="white"), tickfont=dict(color="white"),showgrid=True,gridcolor="rgba(255, 255, 255, 0.2)"),
+                    yaxis=dict(title_font=dict(color="white"), tickfont=dict(color="white"),showgrid=True,gridcolor="rgba(255, 255, 255, 0.2)",tickformat=".0f",tickmode="linear",dtick=1),
+                    legend=dict(font=dict(color="#FFFFFF")),
+                    showlegend=True,
+                    font=dict(color='white')
+                )
+
+                st.plotly_chart(fig7, use_container_width=True)
+
+            df_daily = df_alertes.groupby(df_alertes["Date"].dt.to_period('M').dt.to_timestamp()).size().reset_index(name="Nombre d'alertes")
+
+            fig8 = px.line(df_daily, x="Date", y="Nombre d'alertes",
+                        markers=True)
+
+            fig8.update_traces(line=dict(color='cyan'), fill='tozeroy', mode='lines+markers')
+            fig8.update_layout(
+                title = "Evolution temporelle",
+                xaxis_title="Date",
+                yaxis_title="Nombre d'alertes",
+                plot_bgcolor='rgba(0,0,0,0)',
+                paper_bgcolor='rgba(0,0,0,0)',
+                xaxis=dict(title_font=dict(color="white"), tickfont=dict(color="white"),tickformat="%B %Y",showgrid=True,
+                        gridcolor="rgba(255, 255, 255, 0.2)",tickmode="linear",dtick=1),
+                yaxis=dict(title_font=dict(color="white"), tickfont=dict(color="white"),showgrid=True,
+                        gridcolor="rgba(255, 255, 255, 0.2)",tickformat=".0f",tickmode="linear",dtick=1),
                 legend=dict(font=dict(color="#FFFFFF")),
                 showlegend=True,
                 font=dict(color='white')
             )
 
-            st.plotly_chart(fig7, use_container_width=True)
+            st.plotly_chart(fig8, use_container_width=True)
+            
+            deltas = df_alertes["Date"].diff(periods=-1).dropna()
 
-        df4 = st.session_state.base.copy()
-        df_alertes = df4[df4["Label"] == "Alerte"]
-        df_daily = df_alertes.groupby(df_alertes["Date"].dt.to_period('M').dt.to_timestamp()).size().reset_index(name="Nb_alertes")
+            duree_moyenne = deltas.mean()
 
-        fig8 = px.line(df_daily, x="Date", y="Nb_alertes",
-                    markers=True)
-
-        # (Optionnel) style
-        fig8.update_traces(line=dict(color='cyan'), fill='tozeroy', mode='lines+markers')
-        fig8.update_layout(
-            xaxis_title="Date",
-            yaxis_title="Nombre d'alertes",
-            plot_bgcolor='rgba(0,0,0,0)',
-            paper_bgcolor='rgba(0,0,0,0)',
-            xaxis=dict(title_font=dict(color="white"), tickfont=dict(color="white"),tickformat="%B %Y"),
-            yaxis=dict(title_font=dict(color="white"), tickfont=dict(color="white")),
-            legend=dict(font=dict(color="#FFFFFF")),
-            showlegend=True,
-            font=dict(color='white')
-        )
-
-        st.plotly_chart(fig8, use_container_width=True)
-
-        deltas = df_alertes["Date"].diff(periods=-1).dropna()
-
-        # Moyenne
-        duree_moyenne = deltas.mean()
-
-        # Affichage
-        st.write("Durée moyenne entre 2 alertes")
-        st.write(duree_moyenne)
+            st.write("Durée moyenne entre 2 alertes")
+            st.write(duree_moyenne)
 
 
-        df_alertes["Date"] = pd.to_datetime(df_alertes["Date"])
+            df_alertes["Date"] = pd.to_datetime(df_alertes["Date"])
 
-        resultats = []
+            resultats = []
 
-        for client, group in df_alertes.groupby("Client"):
-            deltas = group["Date"].diff(periods=-1).dropna()
-            if len(deltas) > 0:
-                moyenne = deltas.mean()
+            for client, group in df_alertes.groupby("Client"):
+                deltas = group["Date"].diff(periods=-1).dropna()
+                if len(deltas) > 0:
+                    moyenne = deltas.mean()
+                else:
+                    moyenne = pd.NaT 
+                resultats.append({"Client": client, "Durée_moyenne": moyenne})
+
+            df_durees = pd.DataFrame(resultats)
+            max_val = df_durees["Durée_moyenne"].max()
+            df_durees["%_durée"] = (df_durees["Durée_moyenne"] / max_val * 100).round(1)
+
+            search_client = st.multiselect("Client",list(df_durees.Client.unique()),[],placeholder="...")
+
+            # 🔹 Filtrage conditionnel
+            if search_client:
+                df_filtre = df_durees[df_durees["Client"].isin(search_client)]
             else:
-                moyenne = pd.NaT  # Pas assez de dates pour calculer un intervalle
-            resultats.append({"Client": client, "Durée_moyenne": moyenne})
+                df_filtre = df_durees.copy()
 
-        # Créer le DataFrame final
-        df_durees = pd.DataFrame(resultats)
-        max_val = df_durees["Durée_moyenne"].max()
-        df_durees["%_durée"] = (df_durees["Durée_moyenne"] / max_val * 100).round(1)
-
-        search_client = st.multiselect("Client",list(df_durees.Client.unique()),[])
-
-        # 🔹 Filtrage conditionnel
-        if search_client:
-            df_filtre = df_durees[df_durees["Client"].isin(search_client)]
-        else:
-            df_filtre = df_durees.copy()
-
-        # Préparer la config pour barre de progression
-        columns_config = {
-            "%_durée": st.column_config.ProgressColumn(
-                "Durée moyenne (barre)",
-                min_value=0,
-                max_value=100,
-                format=" "
-                
+            # Préparation de la config pour barre de progression
+            columns_config = {
+                "%_durée": st.column_config.ProgressColumn(
+                    "Durée moyenne (barre)",
+                    min_value=0,
+                    max_value=100,
+                    format=" "
+                    
+                )
+            }
+            df_filtre.sort_values(by="Durée_moyenne",ascending=True,inplace=True)
+            df_filtre["Durée_moyenne"]=df_durees["Durée_moyenne"].apply(lambda x: str(x))
+            # Affichage avec st.data_editor
+            st.write("Durée moyenne entre alertes par client")
+            st.data_editor(
+                df_filtre[["Client", "Durée_moyenne", "%_durée"]],
+                column_config=columns_config,
+                hide_index=True,
+                disabled=True
             )
-        }
-        df_filtre.sort_values(by="Durée_moyenne",ascending=True,inplace=True)
-        df_filtre["Durée_moyenne"]=df_durees["Durée_moyenne"].apply(lambda x: str(x))
-        # Affichage avec st.data_editor
-        st.write("Durée moyenne entre alertes par client")
-        st.data_editor(
-            df_filtre[["Client", "Durée_moyenne", "%_durée"]],
-            column_config=columns_config,
-            hide_index=True,
-            disabled=True
-        )
-        # Affichage
-
-        #st.dataframe(df_durees)
+        
 except AttributeError as l:
-     st.error("Connexion expirée.")
-     st.code(l)
+    st.error("Connexion expirée.")
+    st.code(l)
+
+except socket.gaierror as f:
+    st.error("Hors ligne")

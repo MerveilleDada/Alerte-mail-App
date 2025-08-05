@@ -4,6 +4,7 @@ import pandas as pd
 from imap_tools import MailBox, AND
 import re
 import os
+import socket
 import imaplib
 import unicodedata
 from datetime import datetime, timedelta
@@ -23,6 +24,13 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
+compteur_imap_error = 0
+compteur_imap_abort = 0
+compteur_attribute_error = 0
+if 'dico_1' not in st.session_state:
+    st.session_state.dico_1 = {}
+if 'dico_2' not in st.session_state:
+    st.session_state.dico_2 = {}
 if 'compteur_1' not in st.session_state:
     st.session_state.compteur_1=0
 if 'y_pred_real' not in st.session_state:
@@ -209,100 +217,15 @@ mots_alerte = [
     "risque","signalons", "signaler","urgence","urgence"
 ]
 
-# def extract_mails_imap(
-#     sender_filter=None,
-#     subject_filter=None,
-#     since_days=None,
-#     max_results=20
-# ):
-    
-
-#     criteria = ["ALL"]
-#     if since_days:
-#         date_since = (datetime.now() - timedelta(days=since_days)).strftime("%d-%b-%Y")
-#         criteria = ["SINCE", date_since]
-#     result, data = st.session_state.mail.search(None, *criteria)
-
-#     mail_ids = data[0].split()
-#     mail_ids = mail_ids[-max_results:]  # Limiter les résultats
-
-#     rows = []
-
-#     for mail_id in reversed(mail_ids):
-#         result, msg_data = st.session_state.mail.fetch(mail_id, "(RFC822)")
-#         if result != "OK":
-#             continue
-
-#         raw_email = msg_data[0][1]
-#         msg = email.message_from_bytes(raw_email)
-
-#         # Sujet
-#         subject, encoding = decode_header(msg["Subject"])[0]
-#         if isinstance(subject, bytes):
-#             try:
-#                 subject = subject.decode(encoding or "utf-8")
-#             except:
-#                 subject = subject.decode("utf-8", errors="ignore")
-#         subject = subject or ""
-
-#         # Expéditeur
-#         from_ = msg.get("From", "")
-#         from_email = email.utils.parseaddr(from_)[1]
-#         domain = from_email.split("@")[-1] if "@" in from_email else ""
-
-#         # Date
-#         try:
-#             date_tuple = email.utils.parsedate_tz(msg.get("Date"))
-#             date = datetime.fromtimestamp(email.utils.mktime_tz(date_tuple))
-#         except:
-#             date = None
-
-#         # Aperçu (premiers caractères du corps)
-#         body = ""
-#         if msg.is_multipart():
-#             for part in msg.walk():
-#                 content_type = part.get_content_type()
-#                 if content_type == "text/plain":
-#                     try:
-#                         body = part.get_payload(decode=True).decode("utf-8", errors="ignore")
-#                     except:
-#                         pass
-#                     break
-#         else:
-#             body = msg.get_payload(decode=True).decode("utf-8", errors="ignore")
-
-#         preview = body.strip().replace("\r", "").replace("\n", " ")[:100]
-
-#         # Filtrage
-#         if sender_filter and not any(s.lower() in from_email.lower() for s in sender_filter):
-#             continue
-#         if subject_filter and not any(s.lower() in subject.lower() for s in subject_filter):
-#             continue
-
-#         rows.append({
-#             "Date": date,
-#             "Expéditeur": from_email,
-#             "Domaine": domain,
-#             "Sujet": subject,
-#             "Aperçu": preview
-#         })
-
-
-#     df = pd.DataFrame(rows)
-#     st.session_state.base = df.sort_values("Date", ascending=False)
-
-#     if st.session_state.base.empty:
-#         st.warning("Aucun mail correspondant trouvé.")
-#     else:
-#         st.success(f"✅ {len(st.session_state.base)} mails trouvés")
   
 def extract_mails_imap_tools_ml_ready(
-    sender_filter: list[str] = None,
+    sender_filter_entreprise: list[str] = None,
     subject_filter: list[str] = None,
     period_days: int = 30,
     max_results: int = 100
 ):
     
+    sender_filter = [k for k, v in Correspondance.items() if v in sender_filter_entreprise]
     since_date = (datetime.now() - timedelta(days=period_days)).date()
 
     filters = AND(date_gte=since_date)
@@ -325,9 +248,11 @@ def extract_mails_imap_tools_ml_ready(
             domain = match.group(1) if match else ""
             if domain not in Correspondance.keys():
                 nom_eprise = domain
+                acti = "Inconnue"
             else:
                 nom_eprise = Correspondance[domain]
-
+                acti = Da[nom_eprise]
+            
             # Pièces jointes
             has_attachments = bool(msg.attachments)
             attachment_types = [os.path.splitext(att.filename)[1].lower() for att in msg.attachments] if has_attachments else []
@@ -335,7 +260,7 @@ def extract_mails_imap_tools_ml_ready(
 
             mails_data.append({
                 "Client": nom_eprise,
-                "Activité":Da[nom_eprise],
+                "Activité":acti,
                 "Date": msg.date,
                 "Expéditeur": msg.from_,
                 "Sujet": msg.subject,
@@ -351,28 +276,23 @@ def extract_mails_imap_tools_ml_ready(
             if count >= max_results:
                 break
     df=pd.DataFrame(mails_data)
-    df['Date'] = df['Date'].apply(lambda dt: dt.astimezone(tz=None)) 
-    df['Date'] = df['Date'].dt.tz_localize(None)
-    df["Jour_semaine"]=df["Date"].apply(lambda x: x.isoweekday())
-    df["Heure_journee"]=df["Date"].apply(lambda x: x.hour)
-    df["texte_concat"] = df["Sujet"].fillna("") + " " + df["Aperçu"].fillna("")
-    df["mot_cle_alerte"] = df["texte_concat"].apply(lambda x: contient_mot_alerte(x, mots_alerte))
-    df["Nombre_mot_alerte"]=df["texte_concat"].apply(lambda x: nbre_mot_alerte(x,mots_alerte))
-
-
-    st.session_state.base = df
-
-    if st.session_state.base.empty:
+    if df.empty:
+        st.session_state.base = df
         st.warning("Aucun mail correspondant trouvé.")
     else:
+        df['Date'] = df['Date'].apply(lambda dt: dt.astimezone(tz=None)) 
+        df['Date'] = df['Date'].dt.tz_localize(None)
+        df["Jour_semaine"]=df["Date"].apply(lambda x: x.isoweekday())
+        df["Heure_journee"]=df["Date"].apply(lambda x: x.hour)
+        df["texte_concat"] = df["Sujet"].fillna("") + " " + df["Aperçu"].fillna("")
+        df["mot_cle_alerte"] = df["texte_concat"].apply(lambda x: contient_mot_alerte(x, mots_alerte))
+        df["Nombre_mot_alerte"]=df["texte_concat"].apply(lambda x: nbre_mot_alerte(x,mots_alerte))
+        st.session_state.base = df
         st.success(f"✅ {len(st.session_state.base)} mails trouvés")
 
-expediteurs_de_base=[
-    "@servitel-cm.com",
-    "@alizesgroup.com",
-    "@ionos.fr",
-    "@socgen.com",
-]
+l_1=list(Da.keys())
+l_1.sort()
+expediteurs_de_base=l_1
 try:
     if st.session_state.connect_ionos == 0:
         st.info("Vous devez vous connecter préalablement!")
@@ -394,28 +314,55 @@ try:
                         else:
                             expediteurs_selectionnes = st.multiselect(
                                 "Sélectionnez les expéditeurs souhaités :",
-                                options=expediteurs_de_base
+                                options=expediteurs_de_base,placeholder="..."
                             )
-                    cs1,cs2,cs3 = st.columns([4,1,1])
+                    st.write("➕ Ajouter un expéditeur non prédéfini")
+                    cs1,cs2,cs3 = st.columns([1,1.5,1])
                     with cs1:
-                        nouveau_mail = st.text_input("➕ Ajouter un expéditeur non prédéfini (email exact)")
-                    with cs2:
+                        nouveau_client = st.text_input("Nom client (ex: SERVITEL)")
                         ajouter = st.button("Ajouter")
+                    with cs2:
+                        nouveau_domaine = st.text_input("Nom de domaine (ex: servitel-cm.com)")
                     with cs3:
-                        enlever = st.button("Enlever")
-
-                    if ajouter and nouveau_mail:
-                        if nouveau_mail not in st.session_state.autres_expediteurs:
-                            st.session_state.autres_expediteurs.append(nouveau_mail)
-                    enl_choix=[]
-                    if enlever:
-                        st.session_state.compteur = 1
-                    if st.session_state.compteur == 1:
-                        enl = st.multiselect("Enlever un expéditeur",options=st.session_state.autres_expediteurs)
-                        st.session_state.enl_choix=enl.copy()
+                        l=list(set(Da.values()))
+                        l.sort()
+                        l.append("Autre")
+                        nouvelle_activite = st.selectbox("Secteur d'activité",l,index=None,placeholder="...")
+                        
+                    
+                    if ajouter and nouveau_client and nouveau_domaine and nouvelle_activite:
+                        if nouveau_domaine not in Correspondance:
+                            st.session_state.dico_1[nouveau_domaine]=nouveau_client
+                            st.session_state.dico_2[nouveau_client]=nouvelle_activite
+                            if nouveau_client not in st.session_state.autres_expediteurs:
+                                st.session_state.autres_expediteurs.append(nouveau_client)
+                        else:
+                            st.warning("Nom de domaine déjà répertorié")
+                            st.write(Correspondance[nouveau_domaine])
+                        if nouveau_client in Da:
+                            if nouvelle_activite != Da[nouveau_client]:
+                                st.warning("Secteur d'activité incorrect.")
+                        
+                    # enl_choix=[]
+                    # if enlever:
+                    #     st.session_state.compteur = 1
+                    # if st.session_state.compteur == 1:
+                    #     enl = st.multiselect("Enlever un expéditeur",options=st.session_state.autres_expediteurs,placeholder="...")
+                    #     st.session_state.enl_choix=enl.copy()
+                    # if st.session_state.enl_choix:
+                    #     for i in st.session_state.enl_choix:
+                    #         st.session_state.autres_expediteurs.remove(i)
+                    #         del st.session_state.dico_1[nouveau_domaine]
+                    #         del st.session_state.dico_2[nouveau_client]
+                    
+                    enl = st.multiselect("Enlever un expéditeur",options=st.session_state.autres_expediteurs,placeholder="...")
+                    st.session_state.enl_choix=enl.copy()
                     if st.session_state.enl_choix:
-                        for i in st.session_state.enl_choix:
-                            st.session_state.autres_expediteurs.remove(i)
+                        if st.button("Enlever"):
+                            for i in st.session_state.enl_choix:
+                                st.session_state.autres_expediteurs.remove(i)
+                                st.session_state.dico_1={k: v for k, v in st.session_state.dico_1.items() if v != i}
+                                del st.session_state.dico_2[i]
 
                     valider_expediteurs = st.button("✅ Valider le filtre d'expéditeurs",type = "primary")
 
@@ -425,7 +372,10 @@ try:
                         if "autres_expediteurs" in st.session_state:
                             st.session_state.choix_expediteurs += st.session_state.autres_expediteurs
 
-                        st.session_state.choix_expediteurs = list(set(st.session_state.choix_expediteurs))  # suppression doublons
+                        st.session_state.choix_expediteurs = list(set(st.session_state.choix_expediteurs))
+                        Correspondance.update(st.session_state.dico_1)
+                        Da.update(st.session_state.dico_2)
+
                     except:
                         st.session_state.choix_expediteurs = []
 
@@ -433,6 +383,8 @@ try:
                         c1,c2 = st.columns([1,3])
                         with c1:
                             st.success("📩 Expéditeurs sélectionnés :")
+                            d={k: v for k, v in Correspondance.items() if v in st.session_state.choix_expediteurs}
+                            st.code(d)
                         with c2:
                             with st.expander("Votre sélection"):
                                 contenu_html = """
@@ -525,33 +477,81 @@ try:
                         index=1
                     )
             if st.button("OK", type ="primary"):
-                extract_mails_imap_tools_ml_ready(sender_filter=st.session_state.choix_expediteurs,subject_filter=st.session_state.mots_objet,period_days=st.session_state.periode_mail,max_results=st.session_state.max_results)
+                extract_mails_imap_tools_ml_ready(sender_filter_entreprise=st.session_state.choix_expediteurs,subject_filter=st.session_state.mots_objet,period_days=st.session_state.periode_mail,max_results=st.session_state.max_results)
                 st.session_state.mots_objet=[]
                 st.session_state.choix_expediteurs=[]
                 st.session_state.periode_mail=20
+                st.session_state.dico_1.clear()
+                st.session_state.dico_2.clear()
                 st.session_state.mail = MailBox("imap.ionos.fr",993).login(st.session_state.username,st.session_state.password)
                 st.session_state.compteur_1=2
 
             if st.session_state.compteur_1==2:
-                st.session_state.base[['PJ_document', 'PJ_image']]=st.session_state.base[['PJ_document', 'PJ_image']].astype(int)
-                vecteur_texte_vrai=st.session_state.vectoriseur.transform(st.session_state.base["texte_concat"])
-                from sklearn.preprocessing import StandardScaler
-                scaler=StandardScaler()
-                X_num_scaled_vrai = scaler.fit_transform(st.session_state.base[['Heure_journee','Taille (caractères)','Nombre PJ']])
-                st.session_state.base[['PJ_document', 'PJ_image', 'mot_cle_alerte']]=st.session_state.base[['PJ_document', 'PJ_image', 'mot_cle_alerte']].astype(int)
-                from scipy.sparse import hstack
-                X_final=hstack([vecteur_texte_vrai,X_num_scaled_vrai,st.session_state.base[['Jour_semaine','PJ_document', 'PJ_image', 'mot_cle_alerte']]])
-                st.session_state.y_pred_real = st.session_state.model.predict(X_final)
-                st.session_state.base["Label"] = st.session_state.encoder.inverse_transform(st.session_state.y_pred_real)
-                dico={1:'Lundi',2:'Mardi',3:'Mercredi',4:'Jeudi',5:'Vendredi',6:'Samedi',7:'Dimanche'}
-                st.session_state.base.Jour_semaine=st.session_state.base.Jour_semaine.map(dico)
-                st.session_state.compteur_1=1
+                if st.session_state.base.empty or st.session_state.base is None:
+                    st.write(" ")
+                else:
+                    st.session_state.base[['PJ_document', 'PJ_image']]=st.session_state.base[['PJ_document', 'PJ_image']].astype(int)
+                    vecteur_texte_vrai=st.session_state.vectoriseur.transform(st.session_state.base["texte_concat"])
+                    from sklearn.preprocessing import StandardScaler
+                    scaler=StandardScaler()
+                    X_num_scaled_vrai = scaler.fit_transform(st.session_state.base[['Heure_journee','Taille (caractères)','Nombre PJ']])
+                    st.session_state.base[['PJ_document', 'PJ_image', 'mot_cle_alerte']]=st.session_state.base[['PJ_document', 'PJ_image', 'mot_cle_alerte']].astype(int)
+                    from scipy.sparse import hstack
+                    X_final=hstack([vecteur_texte_vrai,X_num_scaled_vrai,st.session_state.base[['Jour_semaine','PJ_document', 'PJ_image', 'mot_cle_alerte']]])
+                    st.session_state.y_pred_real = st.session_state.model.predict(X_final)
+                    st.session_state.base["Label"] = st.session_state.encoder.inverse_transform(st.session_state.y_pred_real)
+                    dico={1:'Lundi',2:'Mardi',3:'Mercredi',4:'Jeudi',5:'Vendredi',6:'Samedi',7:'Dimanche'}
+                    st.session_state.base.Jour_semaine=st.session_state.base.Jour_semaine.map(dico)
+                    st.session_state.compteur_1=1
 
         except imaplib.IMAP4.error as e:
-            st.error("Délai de connexion dépassé")
-            #st.session_state.mail = MailBox("imap.ionos.fr",993).login(st.session_state.username,st.session_state.password)
+            compteur_imap_error += 1
+            if compteur_imap_error == 1:
+                st.error("Délai de connexion dépassé")
+                try:
+                    st.session_state.mail = MailBox("imap.ionos.fr",993).login(st.session_state.username,st.session_state.password)
+                    st.info("Cliquez à nouveau sur 'OK'")
+                except imaplib.IMAP4.error:
+                    st.info("Reconnectez vous dans 'Authentification'")
+                except imaplib.IMAP4.abort:
+                    st.info("Reconnectez vous dans 'Authentification'")
+            if compteur_imap_error > 1:
+                st.error("Délai de connexion dépassé")
+                st.info("Reconnectez vous dans 'Authentification'")
             #extract_mails_imap_tools_ml_ready(sender_filter=st.session_state.choix_expediteurs,subject_filter=st.session_state.mots_objet,period_days=st.session_state.periode_mail,max_results=st.session_state.max_results)
 
 except AttributeError as a:
-    st.error("Connexion expirée.")
-    st.code(a)
+    compteur_attribute_error += 1
+    if compteur_attribute_error == 1:
+        st.error("Connexion expirée")
+        st.info("Cliquez à nouveau sur 'OK'")
+        try:
+            st.session_state.mail = MailBox("imap.ionos.fr",993).login(st.session_state.username,st.session_state.password)
+            st.success("Reconnecté")
+        except AttributeError:
+            st.info("Reconnectez vous dans 'Authentification'")
+    if compteur_attribute_error > 1:
+        st.error("Connexion expirée")
+        try:
+            st.session_state.mail = MailBox("imap.ionos.fr",993).login(st.session_state.username,st.session_state.password)
+            st.success("Reconnecté")
+        except AttributeError:
+            st.info("Reconnectez vous dans 'Authentification'")
+        
+except socket.gaierror as f:
+    st.error("Hors ligne")
+    
+except imaplib.IMAP4.abort as l:
+    compteur_imap_abort += 1
+    if compteur_imap_abort == 1:
+        st.error("Délai de connexion dépassé")
+        try:
+            st.session_state.mail = MailBox("imap.ionos.fr",993).login(st.session_state.username,st.session_state.password)
+            st.info("Cliquez à nouveau sur 'OK'")
+        except imaplib.IMAP4.error:
+            st.info("Reconnectez vous dans 'Authentification'")
+        except imaplib.IMAP4.abort:
+            st.info("Reconnectez vous dans 'Authentification'")
+    if compteur_imap_abort > 1:
+        st.error("Délai de connexion dépassé")
+        st.info("Reconnectez vous dans 'Authentification'")
