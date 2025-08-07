@@ -108,15 +108,17 @@ try:
                     st.success("Base sauvegardée avec succès.")
 
             if charger_base=="Dernière session":
-                st.session_state.base = st.session_state.base_passee
-                clients_2 = st.multiselect("Clients",list(st.session_state.base.Client.unique()),[list(st.session_state.base.Client.unique())[0]])
-                label_2 = st.multiselect("Label",list(st.session_state.base.Label.unique()),list(st.session_state.base.Label.unique()))
-                df=st.session_state.base[['Client', 'Activité', 'Date', 'Expéditeur', 'Sujet','Nombre PJ', 'PJ_image', 'PJ_document','PJ_Excel','Label']][st.session_state.base["Client"].isin(clients_2) & st.session_state.base["Label"].isin(label_2)]
-                styled_df = df.style.applymap(style_statut, subset=['Label'])
-                st.dataframe(styled_df)
-                      
+                if not st.session_state.base_passee.empty:
+                    st.session_state.base = st.session_state.base_passee
+                    clients_2 = st.multiselect("Clients",list(st.session_state.base.Client.unique()),[list(st.session_state.base.Client.unique())[0]])
+                    label_2 = st.multiselect("Label",list(st.session_state.base.Label.unique()),list(st.session_state.base.Label.unique()))
+                    df=st.session_state.base[['Client', 'Activité', 'Date', 'Expéditeur', 'Sujet','Nombre PJ', 'PJ_image', 'PJ_document','PJ_Excel','Label']][st.session_state.base["Client"].isin(clients_2) & st.session_state.base["Label"].isin(label_2)]
+                    styled_df = df.style.applymap(style_statut, subset=['Label'])
+                    st.dataframe(styled_df)
+                else:
+                    st.info("Base non existante")      
         except AttributeError as a:
-            st.warning("Connexion expirée. Reconnectez-vous")
+            st.warning("Connexion expirée")
 except socket.gaierror as f:
     st.error("Hors ligne")
 
