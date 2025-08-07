@@ -1,8 +1,9 @@
 import streamlit as st
-st.set_page_config(page_title="Module streamlit", layout="centered")
+st.set_page_config(page_title="Alerte-mail-App", layout="centered",page_icon="📊")
 import pandas as pd
 from imap_tools import MailBox, AND
 import re
+import pickle
 import os
 import socket
 import imaplib
@@ -25,8 +26,11 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 compteur_imap_error = 0
+compteur_imap_error_2 = 0
 compteur_imap_abort = 0
 compteur_attribute_error = 0
+if 'base_temp' not in st.session_state:
+    st.session_state.base_temp = pd.DataFrame()
 if 'dico_1' not in st.session_state:
     st.session_state.dico_1 = {}
 if 'dico_2' not in st.session_state:
@@ -35,8 +39,6 @@ if 'compteur_1' not in st.session_state:
     st.session_state.compteur_1=0
 if 'y_pred_real' not in st.session_state:
     st.session_state.y_pred_real=None
-if 'base' not in st.session_state:
-    st.session_state.base=pd.DataFrame()
 if "exp_filter" not in st.session_state:
     st.session_state.exp_filter = ""
 if "subject_filter" not in st.session_state:
@@ -56,39 +58,44 @@ if "enl_choix" not in st.session_state:
 if "compteur" not in st.session_state:
     st.session_state.compteur = 0
 if "mail" not in st.session_state:
-    st.session_state.mail = MailBox("imap.ionos.fr",993).login(username="tickets2025@servitel-cm.com",password="Ti@2025_$*2025")
-if "vectoriseur" not in st.session_state:
-    st.session_state.vectoriseur = None
-if "encoder" not in st.session_state:
-    st.session_state.encoder = None
-if "model" not in st.session_state:
-    st.session_state.model = None
+    st.session_state.mail = None
 
-from sklearn.feature_extraction.text import TfidfVectorizer
-st.session_state.vectoriseur=TfidfVectorizer()
+with open("vectoriseur.pkl",'rb') as v:
+    if "vectoriseur" not in st.session_state:
+        st.session_state.vectoriseur = pickle.load(v)
+with open("encoder.pkl",'rb') as e:
+    if "encoder" not in st.session_state:
+        st.session_state.encoder = pickle.load(e)
+with open("model.pkl",'rb') as m:
+    if "model" not in st.session_state:
+        st.session_state.model = pickle.load(m)
 
-base_fictive = pd.read_excel("emails_fictifs_300_avec_apercu.xlsx")
-base_fictive['texte_concat']=base_fictive['sujet']+" "+base_fictive['apercu']
+# from sklearn.feature_extraction.text import TfidfVectorizer
+# st.session_state.vectoriseur=TfidfVectorizer()
 
-vecteur_texte=st.session_state.vectoriseur.fit_transform(base_fictive["texte_concat"])
+# base_fictive = pd.read_excel("emails_fictifs_300_avec_apercu.xlsx")
+# base_fictive['texte_concat']=base_fictive['sujet']+" "+base_fictive['apercu']
 
-from sklearn.preprocessing import StandardScaler
-scaler=StandardScaler()
-X_num_scaled = scaler.fit_transform(base_fictive[['Heure_journee','Taille (caractères)','Nombre PJ']])
+# vecteur_texte=st.session_state.vectoriseur.fit_transform(base_fictive["texte_concat"])
 
-from sklearn.preprocessing import LabelEncoder
-st.session_state.encoder = LabelEncoder()
-Y = st.session_state.encoder.fit_transform(base_fictive['label'])
+# from sklearn.preprocessing import StandardScaler
+# scaler=StandardScaler()
+# X_num_scaled = scaler.fit_transform(base_fictive[['Heure_journee','Taille (caractères)','Nombre PJ']])
 
-from scipy.sparse import hstack
-X_final_fictif=hstack([vecteur_texte,X_num_scaled,base_fictive[['Jour_semaine','PJ_document', 'PJ_image', 'mot_cle_alerte']]])
+# from sklearn.preprocessing import LabelEncoder
+# st.session_state.encoder = LabelEncoder()
+# Y = st.session_state.encoder.fit_transform(base_fictive['label'])
 
-from sklearn.linear_model import LogisticRegression
-from sklearn.model_selection import train_test_split
+# from scipy.sparse import hstack
+# X_final_fictif=hstack([vecteur_texte,X_num_scaled,base_fictive[['Jour_semaine','PJ_document', 'PJ_image', 'mot_cle_alerte']]])
 
-st.session_state.model=LogisticRegression(max_iter=1000)
-X_train, X_test, y_train, y_test = train_test_split(X_final_fictif, Y, test_size=0.2, random_state=42)
-st.session_state.model.fit(X_train,y_train)
+# from sklearn.linear_model import LogisticRegression
+# from sklearn.model_selection import train_test_split
+
+# st.session_state.model=LogisticRegression(max_iter=1000)
+# X_train, X_test, y_train, y_test = train_test_split(X_final_fictif, Y, test_size=0.2, random_state=42)
+# st.session_state.model.fit(X_train,y_train)
+
 Correspondance = {'group-activa.com': 'Activa Assurance',
  'areaassurances.com': 'Area Assurances',
  'afrilandfirstbank.com': 'Afriland',
@@ -221,7 +228,7 @@ mots_alerte = [
 def extract_mails_imap_tools_ml_ready(
     sender_filter_entreprise: list[str] = None,
     subject_filter: list[str] = None,
-    period_days: int = 30,
+    period_days: int = 90,
     max_results: int = 100
 ):
     
@@ -280,8 +287,9 @@ def extract_mails_imap_tools_ml_ready(
         st.session_state.base = df
         st.warning("Aucun mail correspondant trouvé.")
     else:
-        df['Date'] = df['Date'].apply(lambda dt: dt.astimezone(tz=None)) 
+        df['Date'] = df['Date'].apply(lambda dt: dt.astimezone(tz=None))
         df['Date'] = df['Date'].dt.tz_localize(None)
+        df["Date"] = df["Date"] + pd.Timedelta(hours=1)
         df["Jour_semaine"]=df["Date"].apply(lambda x: x.isoweekday())
         df["Heure_journee"]=df["Date"].apply(lambda x: x.hour)
         df["texte_concat"] = df["Sujet"].fillna("") + " " + df["Aperçu"].fillna("")
@@ -383,8 +391,8 @@ try:
                         c1,c2 = st.columns([1,3])
                         with c1:
                             st.success("📩 Expéditeurs sélectionnés :")
-                            d={k: v for k, v in Correspondance.items() if v in st.session_state.choix_expediteurs}
-                            st.code(d)
+                            # d={k: v for k, v in Correspondance.items() if v in st.session_state.choix_expediteurs}
+                            # st.code(d)
                         with c2:
                             with st.expander("Votre sélection"):
                                 contenu_html = """
@@ -476,82 +484,87 @@ try:
                         options=[10, 20, 50, 100, 200,300],
                         index=1
                     )
-            if st.button("OK", type ="primary"):
-                extract_mails_imap_tools_ml_ready(sender_filter_entreprise=st.session_state.choix_expediteurs,subject_filter=st.session_state.mots_objet,period_days=st.session_state.periode_mail,max_results=st.session_state.max_results)
-                st.session_state.mots_objet=[]
-                st.session_state.choix_expediteurs=[]
-                st.session_state.periode_mail=20
-                st.session_state.dico_1.clear()
-                st.session_state.dico_2.clear()
-                st.session_state.mail = MailBox("imap.ionos.fr",993).login(st.session_state.username,st.session_state.password)
-                st.session_state.compteur_1=2
+            with st.spinner("Chargement..."):
+                if st.button("OK", type ="primary"):
+                    extract_mails_imap_tools_ml_ready(sender_filter_entreprise=st.session_state.choix_expediteurs,subject_filter=st.session_state.mots_objet,period_days=st.session_state.periode_mail,max_results=st.session_state.max_results)
+                    st.session_state.mots_objet=[]
+                    st.session_state.choix_expediteurs=[]
+                    st.session_state.periode_mail=20
+                    st.session_state.dico_1.clear()
+                    st.session_state.dico_2.clear()
+                    st.session_state.mail = MailBox("imap.ionos.fr",993).login(st.session_state.username,st.session_state.password)
+                    st.session_state.compteur_1=2
 
-            if st.session_state.compteur_1==2:
-                if st.session_state.base.empty or st.session_state.base is None:
-                    st.write(" ")
-                else:
-                    st.session_state.base[['PJ_document', 'PJ_image']]=st.session_state.base[['PJ_document', 'PJ_image']].astype(int)
-                    vecteur_texte_vrai=st.session_state.vectoriseur.transform(st.session_state.base["texte_concat"])
-                    from sklearn.preprocessing import StandardScaler
-                    scaler=StandardScaler()
-                    X_num_scaled_vrai = scaler.fit_transform(st.session_state.base[['Heure_journee','Taille (caractères)','Nombre PJ']])
-                    st.session_state.base[['PJ_document', 'PJ_image', 'mot_cle_alerte']]=st.session_state.base[['PJ_document', 'PJ_image', 'mot_cle_alerte']].astype(int)
-                    from scipy.sparse import hstack
-                    X_final=hstack([vecteur_texte_vrai,X_num_scaled_vrai,st.session_state.base[['Jour_semaine','PJ_document', 'PJ_image', 'mot_cle_alerte']]])
-                    st.session_state.y_pred_real = st.session_state.model.predict(X_final)
-                    st.session_state.base["Label"] = st.session_state.encoder.inverse_transform(st.session_state.y_pred_real)
-                    dico={1:'Lundi',2:'Mardi',3:'Mercredi',4:'Jeudi',5:'Vendredi',6:'Samedi',7:'Dimanche'}
-                    st.session_state.base.Jour_semaine=st.session_state.base.Jour_semaine.map(dico)
-                    st.session_state.compteur_1=1
+                if st.session_state.compteur_1==2:
+                    if st.session_state.base.empty or st.session_state.base is None:
+                        st.write(" ")
+                    else:
+                        st.session_state.base[['PJ_document', 'PJ_image']]=st.session_state.base[['PJ_document', 'PJ_image']].astype(int)
+                        vecteur_texte_vrai=st.session_state.vectoriseur.transform(st.session_state.base["texte_concat"])
+                        from sklearn.preprocessing import StandardScaler
+                        scaler=StandardScaler()
+                        X_num_scaled_vrai = scaler.fit_transform(st.session_state.base[['Heure_journee','Taille (caractères)','Nombre PJ']])
+                        st.session_state.base[['PJ_document', 'PJ_image', 'mot_cle_alerte']]=st.session_state.base[['PJ_document', 'PJ_image', 'mot_cle_alerte']].astype(int)
+                        from scipy.sparse import hstack
+                        X_final=hstack([vecteur_texte_vrai,X_num_scaled_vrai,st.session_state.base[['Jour_semaine','PJ_document', 'PJ_image', 'mot_cle_alerte']]])
+                        st.session_state.y_pred_real = st.session_state.model.predict(X_final)
+                        st.session_state.base["Label"] = st.session_state.encoder.inverse_transform(st.session_state.y_pred_real)
+                        dico={1:'Lundi',2:'Mardi',3:'Mercredi',4:'Jeudi',5:'Vendredi',6:'Samedi',7:'Dimanche'}
+                        st.session_state.base.Jour_semaine=st.session_state.base.Jour_semaine.map(dico)
+                        st.session_state.compteur_1=1
+                        st.session_state.base_temp=st.session_state.base
 
         except imaplib.IMAP4.error as e:
             compteur_imap_error += 1
             if compteur_imap_error == 1:
-                st.error("Délai de connexion dépassé")
                 try:
                     st.session_state.mail = MailBox("imap.ionos.fr",993).login(st.session_state.username,st.session_state.password)
                     st.info("Cliquez à nouveau sur 'OK'")
                 except imaplib.IMAP4.error:
-                    st.info("Reconnectez vous dans 'Authentification'")
+                    st.error("Reconnectez vous dans 'Authentification'")
+                    st.session_state.connect_ionos = 0
                 except imaplib.IMAP4.abort:
-                    st.info("Reconnectez vous dans 'Authentification'")
+                    st.error("Reconnectez vous dans 'Authentification'")
+                    st.session_state.connect_ionos = 0
             if compteur_imap_error > 1:
-                st.error("Délai de connexion dépassé")
-                st.info("Reconnectez vous dans 'Authentification'")
-            #extract_mails_imap_tools_ml_ready(sender_filter=st.session_state.choix_expediteurs,subject_filter=st.session_state.mots_objet,period_days=st.session_state.periode_mail,max_results=st.session_state.max_results)
-
+                st.error("Reconnectez vous dans 'Authentification'")
+                st.session_state.connect_ionos = 0
+            
 except AttributeError as a:
-    compteur_attribute_error += 1
-    if compteur_attribute_error == 1:
-        st.error("Connexion expirée")
-        st.info("Cliquez à nouveau sur 'OK'")
-        try:
-            st.session_state.mail = MailBox("imap.ionos.fr",993).login(st.session_state.username,st.session_state.password)
-            st.success("Reconnecté")
-        except AttributeError:
-            st.info("Reconnectez vous dans 'Authentification'")
-    if compteur_attribute_error > 1:
-        st.error("Connexion expirée")
-        try:
-            st.session_state.mail = MailBox("imap.ionos.fr",993).login(st.session_state.username,st.session_state.password)
-            st.success("Reconnecté")
-        except AttributeError:
-            st.info("Reconnectez vous dans 'Authentification'")
-        
+    st.warning("Connexion expirée. Reconnectez-vous")
+    
 except socket.gaierror as f:
     st.error("Hors ligne")
     
 except imaplib.IMAP4.abort as l:
     compteur_imap_abort += 1
     if compteur_imap_abort == 1:
-        st.error("Délai de connexion dépassé")
         try:
             st.session_state.mail = MailBox("imap.ionos.fr",993).login(st.session_state.username,st.session_state.password)
             st.info("Cliquez à nouveau sur 'OK'")
         except imaplib.IMAP4.error:
-            st.info("Reconnectez vous dans 'Authentification'")
+            st.error("Reconnectez vous dans 'Authentification'")
+            st.session_state.connect_ionos = 0
         except imaplib.IMAP4.abort:
-            st.info("Reconnectez vous dans 'Authentification'")
+            st.error("Reconnectez vous dans 'Authentification'")
+            st.session_state.connect_ionos = 0
     if compteur_imap_abort > 1:
-        st.error("Délai de connexion dépassé")
-        st.info("Reconnectez vous dans 'Authentification'")
+        st.error("Reconnectez vous dans 'Authentification'")
+        st.session_state.connect_ionos = 0
+
+except imaplib.IMAP4.error as e:
+    compteur_imap_error_2 += 1
+    if compteur_imap_error_2 == 1:
+        try:
+            st.session_state.mail = MailBox("imap.ionos.fr",993).login(st.session_state.username,st.session_state.password)
+            st.info("Cliquez à nouveau sur 'OK'")
+        except imaplib.IMAP4.error:
+            st.error("Reconnectez vous dans 'Authentification'")
+            st.session_state.connect_ionos = 0
+        except imaplib.IMAP4.abort:
+            st.error("Reconnectez vous dans 'Authentification'")
+            st.session_state.connect_ionos = 0
+    if compteur_imap_error > 1:
+        st.error("Reconnectez vous dans 'Authentification'")
+        st.session_state.connect_ionos = 0
+

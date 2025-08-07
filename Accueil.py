@@ -1,11 +1,11 @@
 import streamlit as st
-st.set_page_config(page_title="Module streamlit", layout="centered")
+st.set_page_config(page_title="Alerte-mail-App", layout="centered",page_icon="📊")
 import logging
-
 
 
 if "connect_ionos" not in st.session_state:
     st.session_state.connect_ionos = 0
+
 
 logging.getLogger("streamlit").setLevel(logging.ERROR)
 

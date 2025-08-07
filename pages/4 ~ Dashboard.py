@@ -1,5 +1,5 @@
 import streamlit as st
-st.set_page_config(page_title="Module streamlit", layout="wide",initial_sidebar_state="collapsed")
+st.set_page_config(page_title="Alerte-mail-App",layout='wide',page_icon="📊",initial_sidebar_state="collapsed")
 import pandas as pd
 import plotly.graph_objects as go
 import plotly.express as px
@@ -7,7 +7,7 @@ import socket
 
 
 st.markdown("""
-            <style>ç
+            <style>
             [data-testid="stSidebar"] {
             background: linear-gradient(-45deg, #3b5998, #192f6a, #4c669f, #1c1c2e);
             background-blend-mode: overlay;
@@ -19,6 +19,11 @@ st.markdown("""
             }
             </style>
         """, unsafe_allow_html=True)
+try:
+    if st.session_state.compte_d==1:
+        st.session_state.base = st.session_state.base_passee
+except AttributeError:
+    pass
 try:
     if st.session_state.connect_ionos == 0:
         st.info("Vous devez vous connecter préalablement!")
@@ -92,24 +97,15 @@ try:
                 fig = go.Figure(
                     data=go.Pie(
                         labels=st.session_state.base["Label"].value_counts().index,
-                        values=st.session_state.base["Label"].value_counts().values,hole=0.7,marker=dict(colors=px.colors.sequential.Reds_r)))
+                        values=st.session_state.base["Label"].value_counts().values,hole=0.7,marker=dict(colors=px.colors.sequential.Reds_r),opacity=0.8))
             
                 fig.update_layout(
-                    title = "Répartition des mails extraits",
-                    plot_bgcolor="rgba(0,0,0,0)",  # fond transparent
-                    paper_bgcolor="rgba(0,0,0,0)",
+                    title = dict(text="Répartition des mails extraits",xanchor='center',x=0.5),
+                    margin=dict(l=25),
+                    plot_bgcolor="rgba(0,0,0,0)",
+                    paper_bgcolor="rgba(0,0,0,0.1)",
                     font=dict(family="Segoe UI", size=14, color="#FFFFFF"),
-                    legend=dict(font=dict(color="#FFFFFF")),
-                    
-                    # shapes=[
-                    #     dict(
-                    #         type="rect",
-                    #         xref="paper", yref="paper",
-                    #         x0=0, y0=0, x1=1.15, y1=1.15,
-                    #         line=dict(color="white", width=0.5),
-                    #         layer="below"
-                    #     )
-                    # ]
+                    legend=dict(font=dict(color="#FFFFFF",style='italic'),bgcolor="rgba(0,0,0,0)")
                 )
 
                 st.plotly_chart(fig, use_container_width=True)
@@ -123,12 +119,13 @@ try:
                 tickvals = list(range(df_heure["Heure"].min(), df_heure["Heure"].max() + 1))
                 ticktext = [f"{x} h" for x in tickvals]
 
-                fig2=px.bar(df_heure,x='Heure',y='Nb',color_discrete_sequence=["#CCE4FF"])
+                fig2=px.bar(df_heure,x='Heure',y='Nb',color_discrete_sequence=["red"],opacity=0.45)
                 fig2.update_yaxes(title_text="Nombre d'alertes")
                 fig2.update_xaxes(title_text='Heure')
                 fig2.update_layout(
+                    margin=dict(l=10,r=20),
                     plot_bgcolor='rgba(0,0,0,0)',
-                    paper_bgcolor='rgba(0,0,0,0)',
+                    paper_bgcolor='rgba(0,0,0,0.1)',
                     font=dict(family="Segoe UI", size=14, color="white"),
                     bargap=0.1,
                     xaxis=dict(title_font=dict(color="white"), tickfont=dict(color="white"),showgrid=True,gridcolor="rgba(255, 255, 255, 0)",tickformat=".0f",dtick=1,tickmode="array",tickvals=tickvals,ticktext=ticktext),
@@ -148,13 +145,13 @@ try:
                     x='Nb',
                     y='Jour',
                     orientation='h',
-                    color_discrete_sequence=px.colors.sequential.Reds_r,
-                    opacity = 0.3
+                    color_discrete_sequence=["red"],opacity=0.45
             )
 
                 fig3.update_layout(
+                    margin=dict(l=10,r=30),
                     plot_bgcolor='rgba(0,0,0,0)',
-                    paper_bgcolor='rgba(0,0,0,0)',
+                    paper_bgcolor='rgba(0,0,0,0.1)',
                     font=dict(family="Segoe UI", size=14, color="white"),
                     bargap=0.15,
                     xaxis=dict(title="Nombre d'alertes",title_font=dict(color="white"), tickfont=dict(color="white"),showgrid=True,gridcolor="rgba(255, 255, 255, 0)",tickformat=".0f",tickmode="linear",dtick=1),
@@ -162,7 +159,7 @@ try:
                 )
 
                 fig3.update_traces(
-                    marker=dict(opacity=0.85, line=dict(width=1, color='rgba(255,255,255,0.2)')),
+                    marker=dict(line=dict(width=1, color='rgba(255,255,255,0.2)')),
                     hoverlabel=dict(bgcolor="black", font_size=13, font_family="Segoe UI")
                 )
                 
@@ -185,17 +182,19 @@ try:
             color='Jour_semaine',
             line_group='Jour_semaine',
             markers=True,
-            color_discrete_sequence=px.colors.sequential.Reds
+            color_discrete_sequence=["#5374C9", "#0ABAB5", "#7FCDCA", "#BBD5E8", "#54DDFF", "#00FFF7", "#B8FFFD"].reverse()
+
             )
 
             fig4.update_layout(
-                title = "Alertes par heure et par jour",
+                title = dict(text="Alertes par heure et par jour"),
+                margin=dict(r=20),
                 plot_bgcolor='rgba(0,0,0,0)',
                 paper_bgcolor='rgba(0,0,0,0)',
                 font=dict(family="Segoe UI", size=14,color="#FFFFFF"),
                 xaxis=dict(title="Heure",title_font=dict(color="white"), tickfont=dict(color="white"),showgrid=True,gridcolor="rgba(255, 255, 255, 0)",tickformat=".0f",tickmode="array",tickvals=tickvals,ticktext=ticktext,dtick=1),
                 yaxis=dict(title_font=dict(color="white"), tickfont=dict(color="white"),showgrid=True,gridcolor="rgba(255, 255, 255, 0.2)",tickformat=".0f",tickmode="linear",dtick=1),
-                legend=dict(font=dict(color="#FFFFFF")),
+                legend=dict(font=dict(color="#FFFFFF",style='italic'),x=1.05,xanchor="left",bgcolor='rgba(0,0,0,0)'),
                 showlegend=True
             )
 
@@ -216,13 +215,11 @@ try:
                         values=df_alertes["Client"].value_counts().values,hole=0.7,marker=dict(colors=px.colors.sequential.Blues)))
                 
                     fig5.update_layout(
-                        title="Alertes par client",
-                        plot_bgcolor='rgba(0,0,0,0)',
-                        paper_bgcolor='rgba(0,0,0,0)',
-                        font=dict(family="Segoe UI", size=14, color="white"),
-                        legend=dict(
-                        font=dict(color="#FFFFFF")
-                    ))
+                        title=dict(text="Alertes par client",xanchor='center',x=0.45),
+                        plot_bgcolor="rgba(0,0,0,0)",
+                        paper_bgcolor="rgba(0,0,0,0.1)",
+                        font=dict(family="Segoe UI", size=14, color="#FFFFFF"),
+                        legend=dict(font=dict(color="#FFFFFF",style='italic'),bgcolor="rgba(0,0,0,0)"))
                     st.plotly_chart(fig5, use_container_width=True)
                 with cO2:
                     fig6 = go.Figure(
@@ -231,13 +228,11 @@ try:
                         values=df_alertes["Activité"].value_counts().values,hole=0.7,marker=dict(colors=px.colors.sequential.Reds)))
                 
                     fig6.update_layout(
-                        title="Alertes par secteur d'activité",
-                        plot_bgcolor='rgba(0,0,0,0)',
-                        paper_bgcolor='rgba(0,0,0,0)',
-                        font=dict(family="Segoe UI", size=14, color="white"),
-                        legend=dict(
-                        font=dict(color="#FFFFFF")
-                    ))
+                        title=dict(text="Alertes par secteur d'activité",xanchor='center',x=0.45),
+                        plot_bgcolor="rgba(0,0,0,0)",
+                        paper_bgcolor="rgba(0,0,0,0.1)",
+                        font=dict(family="Segoe UI", size=14, color="#FFFFFF"),
+                        legend=dict(font=dict(color="#FFFFFF",style='italic'),bgcolor="rgba(0,0,0,0)"))
                     st.plotly_chart(fig6, use_container_width=True)
 
             cl1,cl2 = st.columns([4,1]) 
@@ -269,15 +264,15 @@ try:
                 
                 # Mise en forme
                 fig7.update_layout(
-                    title = "Alertes par client suivant le secteur d'activité",
+                    title = dict(text="Alertes par client suivant le secteur d'activité"),
                     barmode='group',
                     xaxis_title="Client",
                     yaxis_title="Nombre d'alertes",
                     plot_bgcolor='rgba(0,0,0,0)',
                     paper_bgcolor='rgba(0,0,0,0)',
-                    xaxis=dict(title_font=dict(color="white"), tickfont=dict(color="white"),showgrid=True,gridcolor="rgba(255, 255, 255, 0.2)"),
-                    yaxis=dict(title_font=dict(color="white"), tickfont=dict(color="white"),showgrid=True,gridcolor="rgba(255, 255, 255, 0.2)",tickformat=".0f",tickmode="linear",dtick=1),
-                    legend=dict(font=dict(color="#FFFFFF")),
+                    xaxis=dict(title_font=dict(color="white"), tickfont=dict(color="white"),showgrid=True,gridcolor="rgba(255, 255, 255, 0.25)"),
+                    yaxis=dict(title_font=dict(color="white"), tickfont=dict(color="white"),showgrid=True,gridcolor="rgba(255, 255, 255, 0.25)",tickformat=".0f",tickmode="linear",dtick=1),
+                    legend=dict(font=dict(color="#FFFFFF",style='italic'),bgcolor='rgba(0,0,0,0)'),
                     showlegend=True,
                     font=dict(color='white')
                 )
@@ -289,7 +284,7 @@ try:
             fig8 = px.line(df_daily, x="Date", y="Nombre d'alertes",
                         markers=True)
 
-            fig8.update_traces(line=dict(color='cyan'), fill='tozeroy', mode='lines+markers')
+            fig8.update_traces(line=dict(color='#B8FFFD'), fill='tozeroy', mode='lines+markers')
             fig8.update_layout(
                 title = "Evolution temporelle",
                 xaxis_title="Date",
@@ -297,9 +292,9 @@ try:
                 plot_bgcolor='rgba(0,0,0,0)',
                 paper_bgcolor='rgba(0,0,0,0)',
                 xaxis=dict(title_font=dict(color="white"), tickfont=dict(color="white"),tickformat="%B %Y",showgrid=True,
-                        gridcolor="rgba(255, 255, 255, 0.2)",tickmode="linear",dtick=1),
+                        gridcolor="rgba(255, 255, 255, 0.25)",tickmode="linear",dtick=1),
                 yaxis=dict(title_font=dict(color="white"), tickfont=dict(color="white"),showgrid=True,
-                        gridcolor="rgba(255, 255, 255, 0.2)",tickformat=".0f",tickmode="linear",dtick=1),
+                        gridcolor="rgba(255, 255, 255, 0.25)",tickformat=".0f",tickmode="linear",dtick=1),
                 legend=dict(font=dict(color="#FFFFFF")),
                 showlegend=True,
                 font=dict(color='white')
@@ -361,8 +356,13 @@ try:
             )
         
 except AttributeError as l:
-    st.error("Connexion expirée.")
-    st.code(l)
+    st.warning("Connexion expirée. Reconnectez-vous")
 
 except socket.gaierror as f:
     st.error("Hors ligne")
+
+try:
+    if st.session_state.compte_d==1:
+        st.session_state.base = pd.DataFrame()
+except AttributeError:
+    pass

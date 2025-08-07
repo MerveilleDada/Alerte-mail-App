@@ -1,13 +1,12 @@
 import streamlit as st
-st.set_page_config(page_title="Module streamlit", layout="centered")
+st.set_page_config(page_title="Alerte-mail-App", layout="centered",page_icon="📊")
 import logging
 import socket
 import imaplib
 from imap_tools import MailBox
 import imap_tools
+import pandas as pd
 #Importations indispensables
-
-st.set_page_config(page_title="Module streamlit", layout="centered")
 
 st.markdown("""
     <style>
@@ -26,7 +25,8 @@ st.markdown("""
 
 if "compteur_ionos" not in st.session_state:
     st.session_state.compteur_ionos = 0
-
+if 'base' not in st.session_state:
+    st.session_state.base=pd.DataFrame()
 if "connect_ionos" not in st.session_state:
     st.session_state.connect_ionos = 0
 
@@ -48,24 +48,25 @@ if st.button("Se connecter",type="primary"):
 if st.session_state.compteur_ionos == 1:
     st.session_state.username = st.text_input("Adresse e-mail")
     st.session_state.password = st.text_input("Mot de passe")
-    if st.button("OK",type="primary"):
-        imap_server = "imap.ionos.fr"
-        port = 993
-        try:
-            st.session_state.mail = MailBox(f"{imap_server}", port)
-            st.session_state.mail.login(st.session_state.username, st.session_state.password)
-            #st.session_state.mail.select("inbox")
-            st.session_state.connect_ionos = 1
-            st.success("Connexion réussie")
-        except imaplib.IMAP4.error as e:
-            st.error("Échec de connexion")
-            st.code(e)
-        except socket.gaierror as f:
-            st.error("Hors ligne")
-            st.code(f)
-        except imap_tools.errors.MailboxLoginError as i:
-            st.error("Échec de connexion")
-            st.code(i)
+    with st.spinner("Connexion..."):
+        if st.button("OK",type="primary"):
+            imap_server = "imap.ionos.fr"
+            port = 993
+            try:
+                st.session_state.mail = MailBox(f"{imap_server}", port)
+                st.session_state.mail.login(st.session_state.username, st.session_state.password)
+                #st.session_state.mail.select("inbox")
+                st.session_state.connect_ionos = 1
+                st.success("Connexion réussie")
+            except imaplib.IMAP4.error as e:
+                st.error("Échec de connexion")
+                st.code(e)
+            except socket.gaierror as f:
+                st.error("Hors ligne")
+                st.code(f)
+            except imap_tools.errors.MailboxLoginError as i:
+                st.error("Échec de connexion")
+                st.code(i)
 
 if st.session_state.connect_ionos==1:
     if st.sidebar.button("🔒 Se déconnecter",type="primary"):
@@ -75,7 +76,6 @@ if st.session_state.connect_ionos==1:
             st.success("🔁 Déconnecté avec succès. Rechargez pour réinitialiser l'app.")
         except socket.gaierror as f:
             st.error("Hors ligne")
-            st.code(f)
         except imaplib.IMAP4.abort as l:
             st.error("Délai de connexion dépassé")
-            st.code(l)
+            st.session_state.connect_ionos = 0
