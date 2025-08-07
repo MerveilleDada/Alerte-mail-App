@@ -118,9 +118,9 @@ try:
                 else:
                     st.info("Base non existante")      
         except AttributeError as a:
-            st.warning("Connexion expirée")
+            st.warning("Connexion expirée ou base non existante")
 except socket.gaierror as f:
     st.error("Hors ligne")
 
 except AttributeError as a:
-        st.info("Base non existante")
+        st.info("Connexion expirée ou base non existante")
