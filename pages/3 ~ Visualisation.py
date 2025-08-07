@@ -22,8 +22,8 @@ st.markdown("""
 """, unsafe_allow_html=True)
 if 'compte_d' not in st.session_state:
     st.session_state.compte_d=0
-if os.path.exists("base_sauvegardee_{st.session_state.username}.pkl"):
-    with open("base_sauvegardee_{st.session_state.username}.pkl", "rb") as f:
+if os.path.exists(f"base_sauvegardee_{st.session_state.username}.pkl"):
+    with open(f"base_sauvegardee_{st.session_state.username}.pkl", "rb") as f:
         if 'base_passee' not in st.session_state:
             st.session_state.base_passee = pickle.load(f)
 else:
@@ -103,24 +103,25 @@ try:
                     st.info("Données sauvegardées dans 'base_mail.csv'")
 
                 if st.button("Sauvegarder la session",type="primary"):
-                    with open("base_sauvegardee_{st.session_state.username}.pkl", "wb") as f:
+                    with open(f"base_sauvegardee_{st.session_state.username}.pkl", "wb") as f:
                         pickle.dump(st.session_state.base_temp, f)
                     st.success("Base sauvegardée avec succès.")
 
             if charger_base=="Dernière session":
+                st.session_state.base = st.session_state.base_passee
                 if not st.session_state.base_passee.empty:
-                    st.session_state.base = st.session_state.base_passee
                     clients_2 = st.multiselect("Clients",list(st.session_state.base.Client.unique()),[list(st.session_state.base.Client.unique())[0]])
                     label_2 = st.multiselect("Label",list(st.session_state.base.Label.unique()),list(st.session_state.base.Label.unique()))
                     df=st.session_state.base[['Client', 'Activité', 'Date', 'Expéditeur', 'Sujet','Nombre PJ', 'PJ_image', 'PJ_document','PJ_Excel','Label']][st.session_state.base["Client"].isin(clients_2) & st.session_state.base["Label"].isin(label_2)]
                     styled_df = df.style.applymap(style_statut, subset=['Label'])
                     st.dataframe(styled_df)
                 else:
-                    st.info("Base non existante")      
+                    st.info("Base non existante") 
+             
         except AttributeError as a:
-            st.warning("Connexion expirée ou base non existante")
+            st.warning("Connexion expirée ou base non existante") #A revoir
 except socket.gaierror as f:
     st.error("Hors ligne")
 
 except AttributeError as a:
-        st.info("Connexion expirée ou base non existante")
+        st.info("Connexion expirée ou base non existante") #A revoir

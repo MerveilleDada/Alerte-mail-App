@@ -60,13 +60,11 @@ if st.session_state.compteur_ionos == 1:
                 st.success("Connexion réussie")
             except imaplib.IMAP4.error as e:
                 st.error("Échec de connexion")
-                st.code(e)
             except socket.gaierror as f:
                 st.error("Hors ligne")
-                st.code(f)
             except imap_tools.errors.MailboxLoginError as i:
                 st.error("Échec de connexion")
-                st.code(i)
+
 
 if st.session_state.connect_ionos==1:
     if st.sidebar.button("🔒 Se déconnecter",type="primary"):
