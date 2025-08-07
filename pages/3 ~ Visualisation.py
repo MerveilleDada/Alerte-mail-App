@@ -22,8 +22,8 @@ st.markdown("""
 """, unsafe_allow_html=True)
 if 'compte_d' not in st.session_state:
     st.session_state.compte_d=0
-if os.path.exists("base_sauvegardee.pkl"):
-    with open("base_sauvegardee.pkl", "rb") as f:
+if os.path.exists("base_sauvegardee_{st.session_state.username}.pkl"):
+    with open("base_sauvegardee_{st.session_state.username}.pkl", "rb") as f:
         if 'base_passee' not in st.session_state:
             st.session_state.base_passee = pickle.load(f)
 else:
@@ -103,7 +103,7 @@ try:
                     st.info("Données sauvegardées dans 'base_mail.csv'")
 
                 if st.button("Sauvegarder la session",type="primary"):
-                    with open("base_sauvegardee.pkl", "wb") as f:
+                    with open("base_sauvegardee_{st.session_state.username}.pkl", "wb") as f:
                         pickle.dump(st.session_state.base_temp, f)
                     st.success("Base sauvegardée avec succès.")
 
