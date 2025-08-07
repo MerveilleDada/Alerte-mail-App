@@ -19,11 +19,7 @@ st.markdown("""
             }
             </style>
         """, unsafe_allow_html=True)
-try:
-    if st.session_state.compte_d==1:
-        st.session_state.base = st.session_state.base_passee
-except AttributeError:
-    pass
+
 try:
     if st.session_state.connect_ionos == 0:
         st.info("Vous devez vous connecter préalablement!")
@@ -361,8 +357,3 @@ except AttributeError as l:
 except socket.gaierror as f:
     st.error("Hors ligne")
 
-try:
-    if st.session_state.compte_d==1:
-        st.session_state.base = pd.DataFrame()
-except AttributeError:
-    pass

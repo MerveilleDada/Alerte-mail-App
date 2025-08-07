@@ -29,8 +29,7 @@ compteur_imap_error = 0
 compteur_imap_error_2 = 0
 compteur_imap_abort = 0
 compteur_attribute_error = 0
-if 'base_temp' not in st.session_state:
-    st.session_state.base_temp = pd.DataFrame()
+
 if 'dico_1' not in st.session_state:
     st.session_state.dico_1 = {}
 if 'dico_2' not in st.session_state:
@@ -512,7 +511,7 @@ try:
                         dico={1:'Lundi',2:'Mardi',3:'Mercredi',4:'Jeudi',5:'Vendredi',6:'Samedi',7:'Dimanche'}
                         st.session_state.base.Jour_semaine=st.session_state.base.Jour_semaine.map(dico)
                         st.session_state.compteur_1=1
-                        st.session_state.base_temp=st.session_state.base
+                        
 
         except imaplib.IMAP4.error as e:
             compteur_imap_error += 1
