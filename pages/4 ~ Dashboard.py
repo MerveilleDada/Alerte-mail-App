@@ -97,7 +97,7 @@ try:
             
                 fig.update_layout(
                     title = dict(text="Répartition des mails extraits",xanchor='center',x=0.5),
-                    margin=dict(l=35),
+                    margin=dict(l=45),
                     plot_bgcolor="rgba(0,0,0,0)",
                     paper_bgcolor="rgba(0,0,0,0.1)",
                     font=dict(family="Segoe UI", size=14, color="#FFFFFF"),
