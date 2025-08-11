@@ -5,7 +5,12 @@ import plotly.graph_objects as go
 import plotly.express as px
 import socket
 import locale
-locale.setlocale(locale.LC_TIME, "fr_FR.UTF-8")
+
+try:
+    locale.setlocale(locale.LC_TIME, 'fr_FR.UTF-8')
+except locale.Error:
+    locale.setlocale(locale.LC_TIME, 'C')  # fallback safe locale
+
 
 
 st.markdown("""
