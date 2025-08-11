@@ -227,8 +227,8 @@ mots_alerte = [
 def extract_mails_imap_tools_ml_ready(
     sender_filter_entreprise: list[str] = None,
     subject_filter: list[str] = None,
-    period_days: int = 90,
-    max_results: int = 100
+    period_days: int = 183,
+    max_results: int = 500
 ):
     
     sender_filter = [k for k, v in Correspondance.items() if v in sender_filter_entreprise]
