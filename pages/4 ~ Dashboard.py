@@ -7,6 +7,7 @@ import socket
 import locale
 locale.setlocale(locale.LC_TIME, "fr_FR.UTF-8")
 
+
 st.markdown("""
             <style>
             [data-testid="stSidebar"] {
@@ -394,7 +395,7 @@ try:
                 st.plotly_chart(fig9, use_container_width=True)
             
             deltas = df_alertes["Date"].diff(periods=-1).dropna()
-            
+        
             duree_moyenne = deltas.mean()
 
             st.write("Durée moyenne entre 2 alertes")

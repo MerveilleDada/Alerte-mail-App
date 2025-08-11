@@ -1,3 +1,6 @@
+[server]
+enableCORS = false
+
 [theme]
 base="dark"
 primaryColor="#8a1f1fff"

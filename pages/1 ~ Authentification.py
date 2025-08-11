@@ -3,7 +3,6 @@ st.set_page_config(page_title="Alerte-mail-App", layout="centered",page_icon="ðŸ
 import logging
 import socket
 import imaplib
-import time
 from imap_tools import MailBox
 import imap_tools
 import pandas as pd
